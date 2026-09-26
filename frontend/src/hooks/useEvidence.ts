@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react'
 import { Building2, Fingerprint, KeyRound } from 'lucide-react'
 import type { IdentityTier, ProofPackage, Stage } from '../types'
 import type { RegisterProofResult } from '../stellarTypes'
+import { HashWorkerClient } from '../workers/hashWorkerClient'
 
 export const TIERS = [
   {
@@ -71,7 +72,7 @@ export function useEvidence(): UseEvidenceReturn {
     [selectedTier],
   )
 
-  async function handleEvidence(nextFile: File | null) {
+async function handleEvidence(nextFile: File | null) {
     if (!nextFile) return
 
     setFile(nextFile)
@@ -79,9 +80,24 @@ export function useEvidence(): UseEvidenceReturn {
     setMessage('Hashing video locally in the browser.')
 
     try {
-      const { sha256 } = await import('../utils')
-      const sourceHash = await sha256(await nextFile.arrayBuffer())
-      const proofId = await sha256(`${sourceHash}:${crypto.randomUUID()}`)
+      const hashWorker = new HashWorkerClient()
+
+      const sourceHashPromise = hashWorker.hash(
+        await nextFile.arrayBuffer(),
+        undefined,
+        (stage) => setMessage(`Hashing: ${stage}`),
+      )
+
+      const sourceHash = (await sourceHashPromise).toLowerCase()
+
+      const proofIdInput = `${sourceHash}:${crypto.randomUUID()}`
+      const proofIdBuffer = new TextEncoder().encode(proofIdInput).buffer
+      const proofIdPromise = hashWorker.hash(proofIdInput, undefined, (stage) =>
+        setMessage(`Hashing: ${stage}`),
+      )
+
+      const proofId = (await proofIdPromise).toLowerCase()
+
       const timestamp = new Date().toISOString()
 
       setStage('embedding')
