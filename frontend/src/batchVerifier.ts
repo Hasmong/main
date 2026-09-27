@@ -179,6 +179,12 @@ export class BatchVerifier {
 
   constructor(config: Partial<BatchConfig> = {}) {
     this.config = { ...DEFAULT_BATCH_CONFIG, ...config }
+    try {
+      this.hashWorker = new HashWorkerClient()
+      this.useHashWorker = true
+    } catch {
+      this.useHashWorker = false
+    }
   }
 
   public updateConfig(config: Partial<BatchConfig>): void {
