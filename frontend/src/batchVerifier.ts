@@ -1,6 +1,7 @@
 import type { ChainProofRecord } from './stellar'
 import { verifyArtifact, type VerificationEvent } from './verificationFlow'
 import type { ProofManifest } from './proofManifest'
+import { HashWorkerClient } from './workers/hashWorkerClient'
 
 export type BatchOutcome =
   | 'pending'
@@ -176,9 +177,23 @@ export class BatchVerifier {
   private onProgressCallback?: (progress: BatchProgress, items: BatchItemResult[]) => void
   private processedHashes = new Map<string, string>() // videoHash -> itemId
   private accumulatedTotalBytes = 0
+  private hashWorker: HashWorkerClient | null = null
+  private useHashWorker = false
+  private hashWorkerInitialized = false
 
   constructor(config: Partial<BatchConfig> = {}) {
     this.config = { ...DEFAULT_BATCH_CONFIG, ...config }
+  }
+
+  private async ensureHashWorker(): Promise<void> {
+    if (this.hashWorkerInitialized) return
+    try {
+      this.hashWorker = new HashWorkerClient()
+      this.useHashWorker = true
+    } catch {
+      this.useHashWorker = false
+    }
+    this.hashWorkerInitialized = true
   }
 
   public updateConfig(config: Partial<BatchConfig>): void {
