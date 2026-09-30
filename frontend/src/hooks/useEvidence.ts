@@ -91,7 +91,6 @@ export function useEvidence(): UseEvidenceReturn {
       const sourceHash = (await sourceHashPromise).toLowerCase()
 
       const proofIdInput = `${sourceHash}:${crypto.randomUUID()}`
-      const proofIdBuffer = new TextEncoder().encode(proofIdInput).buffer
       const proofIdPromise = hashWorker.hash(proofIdInput, undefined, (stage) =>
         setMessage(`Hashing: ${stage}`),
       )
